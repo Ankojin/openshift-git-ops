@@ -1,0 +1,11 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: nginx-route
+spec:
+  to:
+    kind: Service
+    name: nginx-service    # The name of your service to expose
+  port:
+    targetPort: 80         # The target port on the Nginx service
+  wildcardPolicy: None
