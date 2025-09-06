@@ -1,0 +1,3 @@
+[submodule "EX280"]
+	path = EX280
+	url = https://github.com/Ankojin/openshift-git-ops.git
