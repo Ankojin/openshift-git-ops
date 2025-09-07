@@ -1,0 +1,414 @@
+ 
+Q1) 
+ sudo -i
+ htpasswd -b /etc/origin/master/htpasswd shen openshift
+ htpasswd -b /etc/origin/master/htpasswd joe openshift
+ htpasswd -b /etc/origin/master/htpasswd jack openshift
+ htpasswd -b /etc/origin/master/htpasswd anthony openshift
+ 
+ oc get clusterrolebinding | grep self
+ 
+ oc adm policy remove-cluster-role-from-group self-provisioner system:authenticated:oauth system:authenticated
+ 
+
+Q2) 
+
+oc new-project stanley --description="EX280 Project For application deployment"
+oc new-project sydney --description="EX280 Project For application deployment"
+oc new-project farm --description="EX280 Project For application deployment"
+oc new-project tokyo --description="EX280 Project For application deployment"
+oc new-project nginx --description="EX280 Project For application deployment"
+
+oc adm policy add-role-to-user admin shen -n stanley
+oc adm policy add-role-to-user admin shen -n sydney
+oc adm policy add-role-to-user view joe -n sydney
+oc adm policy add-role-to-user admin jack -n farm
+oc adm policy add-role-to-user  admin anthony -n tokyo
+oc adm policy add-role-to-user  admin anthony -n nginx
+
+
+
+Q3) 
+
+oc project default
+mkdir reg_storage; cd reg_storage
+
+wget path/pv-1.yaml
+
+vim pv-1.yaml 
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-registry
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Recycle
+  nfs:
+    server: services.lab.example.com
+    path: /OSE_registry
+    claimRef:
+      name: claim
+      namespace: default
+
+wget path/pvc1.yaml
+
+vim pvc1.yaml 
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: claim
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+
+
+oc create -f pv-1.yaml 
+oc create -f pvc1.yaml 
+oc get pvc -n default 
+
+oc get dc
+oc set volumes dc/docker-registry
+oc set volumes -h | less
+(Copy example )
+pv and pvc
+
+
+4) 
+
+mkdir sydney 
+cd sydney 
+oc project sydney  
+
+vim quota.yaml 
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: ex280-quota
+spec:
+  hard:
+    pods: "13"
+    limits.cpu: "2" 
+    limits.memory: 2Gi
+    replicationcontrollers: "3"
+    services: "10"
+
+oc create -f quota.yaml 
+oc describe quota ex280-quota 
+
+vim limits.yaml 
+apiVersion: "v1"
+kind: "LimitRange"
+metadata:
+  name: "ex280-quotalimit"
+spec:
+  limits:
+    - type: "Pod"
+      max:
+        cpu: "500m" 
+        memory: "500Mi"
+      min:
+        cpu: "5m" 
+        memory: "300Mi"
+    - type: "Container"
+      max:
+        cpu: "500m"
+        memory: "600Mi" 
+      min:
+        cpu: "100m"
+        memory: "200Mi" 
+      defaultRequest:
+        cpu: "300m" 
+        memory: "400Mi" 
+
+oc describe limitrange ex280-quotalimit
+
+5) 
+vim pv-1.yaml 
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: metrics
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Recycle
+  nfs:
+    server: services.lab.example.com
+    path: /OSE_metrics
+
+
+oc create -f pv-1.yaml
+
+
+define all the parameters in iventory file or you can pass the parameters as below - inventroy file link is given in the exam
+
+ansible-playbook -i inventory  /usr/share/ansible/openshift-ansible/playbooks/openshift-metrics/config.yml \
+-e openshift_metrics_install_metrics=True \
+-e openshift_metrics_install_prefix=registry.lab.example.com/openshift3/ose- \   (Note: Everything they will give except this)
+-e openshift_metrics_image_version=v3.9 \
+-e openshift_metrics_heapster_requests_memory=300M \
+-e openshift_metrics_hawkular_requests_memory=750M \
+-e openshift_metrics_cassandra_requests_memory=750M \
+-e openshift_metrics_cassandra_storage_type=pv \
+-e openshift_metrics_cassandra_pvc_size=5Gi \
+-e openshift_metrics_cassandra_pvc_prefix=metrics \
+
+
+ssh root@master
+oc get pods 
+oc get routes 
+
+Click the link to make sure that page is visisble -- link which is configured in route
+
+6) 
+mkdir stanley 
+cd stanley/
+oc login -u shen -p openshift -n stanley
+oc new-app --docker-image=registry.lab.example.com/openshift/hello-openshift --name=openshift
+wget http://materials.example.com/scripts/create-cert.sh
+chmod +x create-cert.sh
+./create-cert.sh hello.apps.lab.example.com
+oc create route edge --service=openshift --cert=hello.apps.lab.example.com.crt --key=hello.apps.lab.example.com.key -hostname=hello.apps.lab.example.com
+
+curl -k https://hello.apps.lab.example.com
+
+7) 
+oc project stanley
+oc scale --replicas=5 deploymentconfig openshift 
+oc get pods
+
+8) 
+oc project farm
+mkdir farm;cd farm
+oc login -n farm -p openshift -u jack
+oc new-app --name php-helloworld php:5.6~http://services.lab.example.com/php-helloworld
+oc get pods 
+git init 
+git clone http://services.lab.example.com/php-helloworld
+cd php-helloworld/
+vi index.php 
+git status 
+git add index.php
+git commit -m "first commit"
+git push 
+
+oc get pods 
+oc get svc 
+curl 172.30.64.165:8080
+oc get bc
+oc start-build php-helloworld 
+
+oc expose service php-helloworld --hostname=php.apps.lab.example.com
+oc get routes 
+curl php.apps.lab.example.com
+
+9) 
+
+
+
+wget http://materials.example.com/wordpress/nfs/pv-1.yaml
+wget http://materials.example.com/wordpress/nfs/pv-2.yaml
+wget http://materials.example.com/wordpress/pod-mysql.yaml
+wget http://materials.example.com/wordpress/pod-wordpress.yaml
+wget http://materials.example.com/wordpress/pvc-mysql.yaml
+wget http://materials.example.com/wordpress/pvc-wp.yaml
+wget http://materials.example.com/wordpress/service-mysql.yaml
+wget http://materials.example.com/wordpress/service-wp.yaml
+wget http://materials.example.com/wordpress.tar
+
+oc project nginx
+
+vim pv-2.yaml 
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv2-mysql
+spec:
+  capacity:
+    storage: 3Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Recycle
+  nfs:
+    server: services.lab.example.com
+    path: /OSE_mysql
+
+vim pvc-mysql.yaml 
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: claim-mysql
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 3Gi
+
+oc create -f pv-2.yaml 
+oc create -f pvc-mysql.yaml
+
+
+vim pod-mysql.yaml 
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mysql
+  labels:
+    name: mysql
+spec:
+  containers:
+    - resources:
+        limits :
+          cpu: 0.5
+      image: registry.lab.example.com/openshift3/mysql-55-rhel7     (In exam they will give, or oc describe is -n openshift | grep mysql)
+      name: mysql
+      env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: yourpassword
+        - name: MYSQL_USER
+          value: wp_user
+        - name: MYSQL_PASSWORD
+          value: wp_pass
+        - name: MYSQL_DATABASE
+          value: wp_db
+      ports:
+        - containerPort: 3306
+          name: mysql
+      volumeMounts:
+        - name: mysql-persistent-storage
+          mountPath: /var/lib/mysql/data
+  volumes:
+    - name: mysql-persistent-storage
+      persistentVolumeClaim:
+        claimName: claim-mysql
+
+oc create -f pod-mysql.yaml 
+oc get pods 
+oc create -f service-mysql.yaml
+
+
+
+vim pv-1.yaml 
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv1-wp
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Recycle
+  nfs:
+    server: services.lab.example.com
+    path: /OSE_wordpress
+
+vim pvc-wp.yaml 
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: claim-wp
+spec:
+  accessModes:
+    - ReadWriteOnce
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+
+
+
+docker load -i wordpress.tar 
+docker image ls 
+docker tag docker.io/wordpress registry.lab.example.com/openshift3/wordpress
+docker push registry.lab.example.com/openshift3/wordpress
+vim pod-wordpress.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: wordpress
+  labels: 
+    name: wordpress
+spec: 
+  containers: 
+    - image: registry.lab.example.com/openshift3/wordpress    
+      name: wordpress
+      env:
+        - name: WORDPRESS_DB_USER
+          value: wp_user
+        - name: WORDPRESS_DB_PASSWORD
+          value: wp_pass
+        - name: WORDPRESS_DB_NAME
+          value: wp_db
+        - name: WORDPRESS_DB_HOST
+          # this is the name of the mysql service fronting the mysql pod in the same namespace
+          # expands to mysql.<namespace>.svc.cluster.local  - where <namespace> is the current namespace
+          value: mysql
+      ports: 
+        - containerPort: 80
+          name: wordpress
+      volumeMounts:
+        - name: wordpress-persistent-storage
+          mountPath: /var/www/html
+  volumes:
+    - name: wordpress-persistent-storage
+      persistentVolumeClaim:
+       claimName: claim-wp
+
+oc create -f pod-wordpress.yaml 
+oc create -f service-wp.yaml 
+oc get pods 
+oc get svc
+oc expose service wpfrontend  --hostname=wordpress-farm.apps.lab.example.com
+
+From Browser 
+http://wordpress-farm.apps.lab.example.com
+
+Install
+create account and create blog
+
+10) 
+
+mkdir tokyo ; cd tokyo 
+oc project tokyo 
+wget http://materials.example.com/gogs.tar
+wget http://materials.example.com/gogs/gogs-template.yaml
+docker load -i gogs.tar 
+docker tag gogs/gogs registry.lab.example.com/openshift3/gogs:0.9.97
+docker push registry.lab.example.com/openshift3/gogs:0.9.97
+vim gogs-template.yaml 
+98 line postgres version 9.5 to 9.2 as per exam question
+234 line image path registry.lab.example.com/openshift3/gogs (Don't Delete $GOGS_VERSION)
+oc new-app -f gogs-template.yaml  --param=HOSTNAME=gogs-tokyo.apps.lab.example.com --param=GOGS_VERSION=0.9.97
+oc get pods 
+
+oc get route
+
+Go to browser : http://gogs-tokyo.apps.lab.example.com
+create account and login and then create myrepo
+
+from command line:
+
+git clone http://gogs-tokyo.apps.lab.example.com/jack/myrepo.git
+cd myrepo
+vim README.md
+paste given
+:wq!
+git add *
+git commit -m "first commit"
+git push origin master
+will ask password
+
+
+
+ 
