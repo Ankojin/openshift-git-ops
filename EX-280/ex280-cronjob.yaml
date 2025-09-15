@@ -1,0 +1,21 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ex280-cronjob
+  namespace: default
+spec:
+  schedule: "5 4 2 * *"
+  successfulJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: cronjob-sa
+          containers:
+          - name: busybox
+            image: busybox
+            command:
+            - /bin/sh
+            - -c
+            - "echo Hello from CronJob && date"
+          restartPolicy: OnFailure

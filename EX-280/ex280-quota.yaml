@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: ex280-quota
+  namespace: manhattan
+spec:
+  hard:
+    cpu: "2"
+    memory: 1Gi
+    pods: "3"
+    services: "6"
+    replicationcontrollers: "3"
