@@ -1,0 +1,3 @@
+oc get deployments -n world
+oc scale deployment/<deployment-name> --replicas=6 -n world
+oc get pods -n world

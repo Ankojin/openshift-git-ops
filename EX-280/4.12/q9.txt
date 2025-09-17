@@ -1,0 +1,1 @@
+oc create secret generic ex280-secure --from-literal=myuser='asdf234234='  -n secure

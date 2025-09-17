@@ -1,0 +1,692 @@
+### **Q1. Configure the Identity Provider for OpenShift**
+
+* Create an Htpasswd Identity Provider with the name: `htpass-ex280`
+* Create the secret for Identity provider users: `htpass-idp-ex280`
+* Create the user account `jobs` with password `deluges`
+* Create the user account `wozniak` with password `grannies`
+* Create the user account `collins` with password `culverins`
+* Create the user account `adlerin` with password `artiste`
+* Create the user account `armstrong` with password `spacesuits`
+
+**Solution (workflow):**
+
+1. Create the htpasswd file with users:
+
+   ```
+   htpasswd -cbB htpasswd_file jobs deluges
+   htpasswd -bB htpasswd_file wozniak grannies
+   htpasswd -bB htpasswd_file collins culverins
+   htpasswd -bB htpasswd_file adlerin artiste
+   htpasswd -bB htpasswd_file armstrong spacesuits
+   ```
+
+2. Create the secret:
+
+   ```
+   oc create secret generic htpass-idp-ex280 --from-file=htpasswd=htpasswd_file -n openshift-config
+   ```
+
+3. Configure the OAuth IDP:
+
+   ```
+   oc edit oauth cluster
+   ```
+
+   Add:
+
+   ```yaml
+   spec:
+     identityProviders:
+     - name: htpass-ex280
+       mappingMethod: claim
+       type: HTPasswd
+       htpasswd:
+         fileData:
+           name: htpass-idp-ex280
+   ```
+
+4. Verify login works:
+
+   ```
+   oc login -u jobs -p deluges https://api.ocp.example.com:6443
+   ```
+
+---
+
+### **Q2. Configure Cluster Permissions**
+
+* Grant `jobs` the `cluster-admin` role
+* Grant `wozniak` permission to create projects but not modify cluster
+* Prevent `armstrong` from creating projects
+* Remove kubeadmin credentials
+
+**Solution (workflow):**
+
+1. Grant cluster-admin to `jobs`:
+
+   ```
+   oc adm policy add-cluster-role-to-user cluster-admin jobs
+   ```
+2. Grant self-provisioner (create projects) to `wozniak`:
+
+   ```
+   oc adm policy add-cluster-role-to-user self-provisioner wozniak
+   ```
+3. Remove project creation from `armstrong`:
+
+   ```
+   oc adm policy remove-cluster-role-from-user self-provisioner armstrong
+   ```
+4. Remove kubeadmin credentials:
+
+   ```
+   oc delete secret kubeadmin -n kube-system
+   ```
+5. Verify:
+
+   ```
+   oc get clusterrolebinding | grep -E "jobs|wozniak|armstrong"
+   ```
+
+---
+
+### **Q3. Create Projects and Roles**
+
+* Create projects: `apollo`, `titan`, `gemini`, `bluebook`, `apache`
+* Grant `armstrong` admin role on `apollo` and `titan`
+* Grant `collins` view role on `apollo`
+
+**Solution:**
+
+1. Create projects:
+
+   ```
+   oc new-project apollo
+   oc new-project titan
+   oc new-project gemini
+   oc new-project bluebook
+   oc new-project apache
+   ```
+2. Add permissions:
+
+   ```
+   oc adm policy add-role-to-user admin armstrong -n apollo
+   oc adm policy add-role-to-user admin armstrong -n titan
+   oc adm policy add-role-to-user view collins -n apollo
+   ```
+3. Verify:
+
+   ```
+   oc get projects
+   oc get rolebinding -n apollo
+   ```
+
+---
+
+### **Q4. Create Groups and Bind Roles**
+
+* Create group `commander` with user `wozniak`
+* Create group `pilot` with user `adlerin`
+* Grant commander group `edit` on `apollo` and `titan`
+* Grant pilot group `view` on `apollo`
+
+**Solution:**
+
+1. Create groups and add users:
+
+   ```
+   oc adm groups new commander
+   oc adm groups add-users commander wozniak
+   oc adm groups new pilot
+   oc adm groups add-users pilot adlerin
+   ```
+2. Assign roles to groups:
+
+   ```
+   oc adm policy add-role-to-group edit commander -n apollo
+   oc adm policy add-role-to-group edit commander -n titan
+   oc adm policy add-role-to-group view pilot -n apollo
+   ```
+3. Verify:
+
+   ```
+   oc get groups commander pilot -o yaml
+   oc get rolebinding -n apollo
+   ```
+
+---
+
+### **Q5. Create ResourceQuota in manhattan**
+
+* Create quota `ex280-quota` with:
+
+  * CPU = 2
+  * Memory = 1Gi
+  * Pods = 3
+  * Services = 6
+  * ReplicationControllers = 3
+
+**Solution:**
+
+1. Apply quota:
+
+   ```
+   oc create namespace manhattan
+   oc apply -f ex280-quota.yaml -n manhattan
+   ```
+
+2. Verify:
+
+   ```
+   oc describe quota ex280-quota -n manhattan
+   ```
+
+---
+
+### **Q6. Create LimitRange in bluebook**
+
+* Create limitrange `ex280-limits` with:
+
+  * Container defaultRequest: memory=100Mi, cpu=100m
+  * Container min: memory=100Mi, cpu=10m
+  * Container max: memory=300Mi, cpu=500m
+  * Pod min/max the same as container
+
+**Solution:**
+
+1. Apply limitrange:
+
+   ```
+   oc apply -f ex280-limits.yaml -n bluebook
+   ```
+
+2. Verify:
+
+   ```
+   oc describe limitrange ex280-limits -n bluebook
+   ```
+
+### **Q7. Deploy an Application rocky in bluewills**
+
+* Deploy an application called `rocky` in the project `bluewills`.
+* The application should be reachable at: `http://rocky.apps.ocp4.example.com`.
+* Application should run as a service account named `magic`.
+* The `magic` service account should be allowed to run with any UID.
+
+**Solution:**
+
+1. Switch to project:
+
+   ```
+   oc new-project bluewills
+   ```
+
+2. Create SA and assign SCC:
+
+   ```
+   oc create sa magic -n bluewills
+   oc adm policy add-scc-to-user anyuid -z magic -n bluewills
+   ```
+
+3. Deploy app:
+
+   ```
+   oc new-app --name=rocky registry.example.com/rocky:latest -n bluewills
+   oc set serviceaccount deployment/rocky magic -n bluewills
+   ```
+
+4. Expose route:
+
+   ```
+   oc expose svc/rocky --hostname=rocky.apps.ocp4.example.com -n bluewills
+   ```
+
+**Verification:**
+
+```
+oc get pods -n bluewills
+oc get route rocky -n bluewills
+curl http://rocky.apps.ocp4.example.com
+```
+
+---
+
+### **Q8. Create a Secure Edge Route for oxcart in area51**
+
+* In project `area51`, create a secure edge route named `oxcart`.
+* The route should use the hostname `oxcart.apps.ocp4.example.com`.
+* Use a self-signed certificate.
+
+**Solution:**
+
+1. Ensure cert and key files exist (`oxcart.crt`, `oxcart.key`).
+2. Create route:
+
+   ```
+   oc project area51
+   oc create route edge oxcart --service=<service-name> \
+     --hostname=oxcart.apps.ocp4.example.com \
+     --cert=oxcart.crt --key=oxcart.key
+   ```
+
+**Verification:**
+
+```
+oc get route oxcart -n area51
+curl -k https://oxcart.apps.ocp4.example.com
+```
+
+---
+
+### **Q9. Scale Application hydra in lerna**
+
+* Scale deployment `hydra` in project `lerna` to 5 replicas.
+
+**Solution:**
+
+1. Scale deployment:
+
+   ```
+   oc project lerna
+   oc scale --replicas=5 deployment/hydra -n lerna
+   ```
+
+**Verification:**
+
+```
+oc get pods -n lerna -l app=hydra
+```
+
+---
+
+### **Q10. Configure HPA for scala in gru**
+
+* DeploymentConfig `scala` in project `gru`.
+* Set requests: cpu=25m, limits: cpu=100m.
+* Create autoscaler: min=6, max=40, target CPU=60%.
+
+**Solution:**
+
+1. Configure resources:
+
+   ```
+   oc project gru
+   oc set resources dc/scala --limits=cpu=100m --requests=cpu=25m
+   ```
+
+2. Create HPA:
+
+   ```
+   oc autoscale dc/scala --min=6 --max=40 --cpu-percent=60
+   ```
+
+**Verification:**
+
+```
+oc get hpa -n gru
+oc describe hpa scala -n gru
+```
+
+---
+
+### **Q11. Create Secret magic in math**
+
+* Secret name: `magic` in namespace `math`.
+* Key: `Decoder_Ring`, value: `ASDA142hfh-gfrhhueo-erfdk345v`.
+
+**Solution:**
+
+1. Create secret:
+
+   ```
+   oc project math
+   oc create secret generic magic --from-literal=Decoder_Ring=ASDA142hfh-gfrhhueo-erfdk345v -n math
+   ```
+
+**Verification:**
+
+```
+oc get secret magic -n math -o yaml
+```
+### **Q12. Use Secret in Application qed in math**
+
+* Inject secret `magic` as environment variables into application `qed` in project `math`.
+
+**Solution:**
+
+1. Set env vars from secret:
+
+   ```
+   oc project math
+   oc set env --from=secret/magic dc/qed -n math
+   ```
+
+2. Rollout restart if needed:
+
+   ```
+   oc rollout status dc/qed -n math
+   ```
+
+**Verification:**
+
+```
+oc set env dc/qed --list -n math
+```
+
+### **Q13. Create Service Account ex-280-sa in apples**
+
+* Create a service account named `ex-280-sa` in project `apples`.
+* Allow it to run with any UID.
+
+**Solution:**
+
+1. Create SA:
+
+   ```
+   oc project apples
+   oc create sa ex-280-sa -n apples
+   ```
+2. Assign SCC:
+
+   ```
+   oc adm policy add-scc-to-user anyuid -z ex-280-sa -n apples
+   ```
+
+**Verification:**
+
+```
+oc get sa ex-280-sa -n apples
+oc describe sa ex-280-sa -n apples
+```
+
+---
+
+### **Q14. Deploy Application oranges in apples using SA**
+
+* Deploy application `oranges` in project `apples`.
+* The application must run as service account `ex-280-sa`.
+
+**Solution:**
+
+1. Deploy app:
+
+   ```
+   oc project apples
+   oc new-app --name=oranges registry.example.com/oranges:latest
+   ```
+2. Set SA:
+
+   ```
+   oc set serviceaccount dc/oranges ex-280-sa -n apples
+   ```
+
+**Verification:**
+
+```
+oc get pods -n apples -l app=oranges -o wide
+oc describe pod <pod> -n apples | grep "Service Account"
+```
+
+### **Q15. Modify Deployment atlas in mercury**
+
+* In project `mercury`, modify DeploymentConfig `atlas`.
+* Adjust CPU/memory requests and limits as per requirements.
+
+**Solution:**
+
+1. Edit DC:
+
+   ```
+   oc project mercury
+   oc edit dc/atlas
+   ```
+
+   Update `resources.requests` and `resources.limits` fields.
+
+**Verification:**
+
+```
+oc get dc atlas -n mercury -o yaml | grep resources -A3
+```
+
+---
+
+### **Q16. Modify Deployment mercury in atlas**
+
+* In project `atlas`, modify DeploymentConfig `mercury`.
+* Adjust CPU/memory requests and limits as per requirements.
+
+**Solution:**
+
+1. Edit DC:
+
+   ```
+   oc project atlas
+   oc edit dc/mercury
+   ```
+
+   Update `resources.requests` and `resources.limits` fields.
+
+**Verification:**
+
+```
+oc get dc mercury -n atlas -o yaml | grep resources -A3
+```
+
+### **Q17. Create NetworkPolicy for checker to access database**
+
+* In project `database`.
+* Allow traffic from namespace `checker` to pods labeled `app=web-mysql`.
+* Only allow TCP port 8080.
+
+**Solution:**
+
+1. Apply network policy:
+
+   ```
+   oc apply -f ex280-netpol.yaml -n database
+   ```
+
+2. Test connectivity from `checker`:
+
+   ```
+   oc project checker
+   oc run testpod --rm -ti --image=busybox -- /bin/sh
+   wget -qO- http://<db-pod-ip>:8080
+   ```
+
+**Verification:**
+
+```
+oc describe netpol allow-checker-to-db-8080 -n database
+```
+
+---
+
+### **Q18. Deploy Helm Chart (movie site)**
+
+* Deploy movie site application using Helm.
+* Repository: `http://charts.ocp4.example.com/charts/`.
+
+**Solution:**
+
+1. Add repo:
+
+   ```
+   helm repo add redhat-movie-repo http://charts.ocp4.example.com/charts/
+   helm repo update
+   ```
+
+2. Install chart:
+
+   ```
+   helm install movie-site redhat-movie-repo/<chart_name> -n movies --create-namespace
+   ```
+
+**Verification:**
+
+```
+helm list -n movies
+oc get pods -n movies
+```
+### **Q20. Configure LivenessProbe for atlas in mercury**
+
+* DeploymentConfig `atlas` in project `mercury`.
+* Add TCP liveness probe on port 8080.
+* Initial delay = 10 seconds, timeout = 30 seconds.
+
+**Solution:**
+
+1. Set probe:
+
+   ```
+   oc project mercury
+   oc set probe dc/atlas --liveness --open-tcp=8080 \
+     --initial-delay-seconds=10 --timeout-seconds=30
+   ```
+
+**Verification:**
+
+```
+oc get dc atlas -n mercury -o yaml | grep livenessProbe -A5
+```
+
+---
+
+### **Q21. Collect Must-Gather Logs**
+
+* Run must-gather to collect cluster data.
+* Archive as tar.gz.
+* Upload using provided script.
+
+**Solution:**
+
+1. Run must-gather:
+
+   ```
+   oc adm must-gather --dest-dir=./must-gather
+   ```
+2. Create archive:
+
+   ```
+   tar -cvaf must-gather.ClusterID.tar.gz must-gather/
+   ```
+3. Upload:
+
+   ```
+   ./upload.sh must-gather.ClusterID.tar.gz
+   ```
+
+**Verification:**
+
+```
+ls -lh must-gather.ClusterID.tar.gz
+```
+
+---
+
+### **Q22. Create CronJob**
+
+* Create a CronJob.
+* Schedule: `5 4 2 * *` (04:05 on day 2 each month).
+* Keep 3 successful job histories.
+* Use BusyBox container to echo date.
+
+**Solution:**
+
+1. Apply CronJob YAML:
+
+   ```
+   oc apply -f ex280-cronjob.yaml
+   ```
+
+**Verification:**
+
+```
+oc get cronjob
+oc describe cronjob ex280-cronjob
+```
+
+---
+
+### **Q23. Create Project Template**
+
+* Create a project template including a LimitRange.
+* Set it as default for new projects.
+
+**Solution:**
+
+1. Generate bootstrap template:
+
+   ```
+   oc adm create-bootstrap-project-template -o yaml > mytemplate.yaml
+   ```
+2. Edit `mytemplate.yaml` and insert LimitRange.
+3. Apply:
+
+   ```
+   oc create -f mytemplate.yaml -n openshift-config
+   ```
+4. Edit cluster config:
+
+   ```
+   oc edit projects.config.openshift.io cluster
+   ```
+
+   Add:
+
+   ```yaml
+   spec:
+     projectRequestTemplate:
+       name: mytemplate
+   ```
+
+**Verification:**
+
+```
+oc get template -n openshift-config
+```
+
+---
+
+### **Q24. Troubleshoot Applications**
+
+* Pod stuck in Pending.
+* Pod CrashLoopBackOff.
+* Route not working.
+
+**Solution:**
+
+1. **Pending Pod:**
+
+   ```
+   oc describe pod <pod>
+   oc get events -n <ns>
+   oc get nodes --show-labels
+   ```
+
+   Fix nodeSelector/labels.
+
+2. **CrashLoopBackOff:**
+
+   ```
+   oc logs <pod>
+   oc describe pod <pod>
+   ```
+
+   Fix permissions:
+
+   ```
+   oc create sa fixsa -n <ns>
+   oc adm policy add-scc-to-user anyuid -z fixsa -n <ns>
+   oc set serviceaccount dc/<app> fixsa -n <ns>
+   ```
+
+3. **Route not working:**
+
+   ```
+   oc describe svc <svc>
+   oc describe endpoints <svc>
+   ```
+
+   Fix mismatched labels in Service selector.

@@ -1,0 +1,2 @@
+oc expose deployment hello-app --port=80 -n project1
+oc get svc -n project1

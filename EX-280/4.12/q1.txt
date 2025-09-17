@@ -1,0 +1,10 @@
+Q1-Sol
+
+htpasswd -c -B -b users.htpasswd bob indionce
+htpasswd -B -b users.htpasswd qwerty catalog
+htpasswd -B -b users.htpasswd john john123
+htpasswd -B -b users.htpasswd harry harry123
+htpasswd -B -b users.htpasswd natasha natasha123
+htpasswd -B -b users.htpasswd susan susan123
+
+oc create secret generic <secret-name> --from-file=htpasswd=users.htpasswd -n openshift-config

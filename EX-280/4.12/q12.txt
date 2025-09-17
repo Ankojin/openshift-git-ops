@@ -1,0 +1,5 @@
+# Create the service account
+oc create serviceaccount project1-sa -n project1
+
+# Add the service account to the anyuid SCC
+oc adm policy add-scc-to-user anyuid -z project1-sa -n project1

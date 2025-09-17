@@ -1,0 +1,159 @@
+Great 👍 Let’s build you a **Mock EX280 Practice Exam** that feels like the real thing.
+Here’s a full **hands-on test scenario** you can run on your OpenShift lab (CRC, local, or cloud cluster).
+
+---
+
+# 🧑‍💻 Mock EX280 Exam – Practice Tasks
+
+⏱️ **Timebox yourself to 2 hours** – just like the real exam.
+📄 **Keep Red Hat docs open** (you’re allowed to in the exam).
+⚡ **Do everything from CLI unless otherwise required.**
+
+---
+
+## **Scenario**
+
+You are the OpenShift cluster administrator. Complete the following tasks:
+
+---
+
+### **Task 1 – Project Setup**
+
+1. Create a new project named `exam-proj`.
+2. Ensure the user `developer` has `edit` role in this project.
+
+✅ Validation:
+
+```bash
+oc get projects | grep exam-proj
+oc get rolebinding -n exam-proj
+```
+
+---
+
+### **Task 2 – Application Deployment**
+
+1. Deploy an application from the image `quay.io/openshiftlabs/hello-openshift`.
+2. Name the deployment `webapp`.
+3. Expose it via a service and route so it’s accessible externally.
+
+✅ Validation:
+
+```bash
+oc get pods -n exam-proj
+oc get svc,route -n exam-proj
+```
+
+---
+
+### **Task 3 – Scaling**
+
+1. Scale `webapp` to **3 replicas**.
+2. Verify the load-balancing by curling the route multiple times.
+
+✅ Validation:
+
+```bash
+oc get pods -n exam-proj
+curl http://$(oc get route webapp -n exam-proj -o jsonpath='{.spec.host}')
+```
+
+---
+
+### **Task 4 – Configurations**
+
+1. Create a ConfigMap named `web-config` with key `APP_MODE=production`.
+2. Inject this ConfigMap into `webapp` as an environment variable.
+
+✅ Validation:
+
+```bash
+oc set env deployment/webapp --list -n exam-proj | grep APP_MODE
+```
+
+---
+
+### **Task 5 – Secrets**
+
+1. Create a Secret named `db-secret` with key `DB_PASS=redhat123`.
+2. Mount this Secret into the `webapp` container at `/etc/secret`.
+
+✅ Validation:
+
+```bash
+oc exec -it <webapp-pod> -n exam-proj -- ls /etc/secret
+```
+
+---
+
+### **Task 6 – Storage**
+
+1. Create a PVC named `mypvc` requesting `1Gi` storage.
+2. Mount it to `webapp` at `/data`.
+3. Verify that a file created in one pod is visible in another pod.
+
+✅ Validation:
+
+```bash
+oc exec -it <webapp-pod> -- touch /data/testfile
+oc exec -it <another-webapp-pod> -- ls /data
+```
+
+---
+
+### **Task 7 – Networking**
+
+1. Create a NetworkPolicy in `exam-proj` that only allows traffic to `webapp` pods from pods labeled `role=frontend`.
+2. Test by launching a temporary pod with and without the label.
+
+✅ Validation:
+
+```bash
+oc run test-frontend --rm -it --image=busybox --labels=role=frontend -- sh
+```
+
+---
+
+### **Task 8 – Security**
+
+1. Create a ServiceAccount named `app-sa`.
+2. Assign it the `view` role in `exam-proj`.
+3. Redeploy `webapp` to run as `app-sa`.
+
+✅ Validation:
+
+```bash
+oc describe deployment webapp | grep ServiceAccount
+```
+
+---
+
+### **Task 9 – Troubleshooting**
+
+A pod named `crashy` is stuck in `CrashLoopBackOff`.
+
+1. Inspect its logs.
+2. Debug the pod with `oc debug`.
+3. Fix the issue by updating its deployment to use the image `nginx:latest`.
+
+✅ Validation:
+
+```bash
+oc get pods -n exam-proj
+oc describe pod crashy -n exam-proj
+```
+
+---
+
+### **Task 10 – Cluster Info**
+
+1. Get a list of all nodes in the cluster and their status.
+2. Save this info to `/tmp/nodes.txt` on the bastion host.
+
+✅ Validation:
+
+```bash
+cat /tmp/nodes.txt
+```
+
+---

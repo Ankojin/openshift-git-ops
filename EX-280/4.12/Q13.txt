@@ -1,0 +1,27 @@
+oc new-app nginx --name=app -n project2
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+  namespace: project2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+      - name: app
+        image: nginx
+        ports:
+        - containerPort: 80
+
+oc expose deployment app --port=80 -n project2
+oc expose svc app -n project2
+oc get svc -n project2
+oc get route -n project2
+curl http://<route-url>

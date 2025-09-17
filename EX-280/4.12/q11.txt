@@ -1,0 +1,28 @@
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout tls.key -out tls.crt -subj "/CN=quart.apps.domain3.example.com"
+
+oc create secret tls hello-tls --cert=tls.crt --key=tls.key -n quart
+
+oc create route edge hello-secure  --service=hello --hostname=quart.apps.domain3.example.com --cert=tls.crt --key=tls.key -n quart
+
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: hello-secure
+  namespace: quart
+spec:
+  host: quart.apps.domain3.example.com
+  to:
+    kind: Service
+    name: hello
+  port:
+    targetPort: 80
+  tls:
+    termination: edge
+    key: |-
+      -----BEGIN PRIVATE KEY-----
+      # paste contents of tls.key here
+      -----END PRIVATE KEY-----
+    certificate: |-
+      -----BEGIN CERTIFICATE-----
+      # paste contents of tls.crt here
+      -----END CERTIFICATE-----

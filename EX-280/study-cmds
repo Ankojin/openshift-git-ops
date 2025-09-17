@@ -1,0 +1,163 @@
+Perfect 👍 thanks for confirming. Since you said *yes*, let’s start structured: I’ll give you a **study plan with lab exercises + a compact cheat sheet** so you can practice for the **EX280 OpenShift Admin exam**.
+
+---
+
+## 🔹 1. Study Plan (Daily Practice)
+
+Here’s a breakdown of what to cover:
+
+### **Day 1–2: Basics & CLI**
+
+* Get comfortable with `oc` (list pods, logs, exec, describe).
+* Create and switch projects.
+* Practice creating applications (`oc new-app`, `oc apply -f`).
+* Scale deployments.
+
+👉 **Lab:**
+
+```bash
+oc new-project ex280-lab
+oc new-app quay.io/openshiftlabs/hello-openshift
+oc get pods
+oc logs <podname>
+oc scale deployment hello-openshift --replicas=3
+```
+
+---
+
+### **Day 3–4: Configs & Secrets**
+
+* Use ConfigMaps and Secrets.
+* Mount them as env vars and volumes.
+* Update deployments with new config.
+
+👉 **Lab:**
+
+```bash
+oc create configmap app-config --from-literal=APP_MODE=prod
+oc create secret generic app-secret --from-literal=DB_PASS=redhat123
+oc set env deployment hello-openshift --from=configmap/app-config
+oc set env deployment hello-openshift --from=secret/app-secret
+```
+
+---
+
+### **Day 5–6: Storage**
+
+* Request PVCs and attach them.
+* Work with StorageClasses.
+* Validate data persistence.
+
+👉 **Lab:**
+
+```bash
+oc create -f - <<EOF
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mypvc
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+EOF
+
+oc set volume deployment hello-openshift --add --name=mypvc \
+   --mount-path=/data --claim-name=mypvc
+```
+
+---
+
+### **Day 7: Networking**
+
+* Expose services with routes.
+* Use `oc expose` and Ingress.
+* Apply NetworkPolicies.
+
+👉 **Lab:**
+
+```bash
+oc expose deployment hello-openshift --port=8080
+oc expose svc/hello-openshift
+```
+
+---
+
+### **Day 8: Security**
+
+* Service accounts.
+* Role bindings (RBAC).
+* SecurityContextConstraints (SCCs).
+
+👉 **Lab:**
+
+```bash
+oc create sa test-sa
+oc adm policy add-role-to-user edit -z test-sa
+oc run nginx --image=nginx --restart=Never --serviceaccount=test-sa
+```
+
+---
+
+### **Day 9–10: Troubleshooting & Admin Tasks**
+
+* Check events/logs.
+* Debug pods (`oc rsh`, `oc debug`).
+* Manage nodes and projects.
+* Collect cluster info.
+
+👉 **Lab:**
+
+```bash
+oc get events
+oc debug node/<nodename>
+oc describe pod <podname>
+```
+
+---
+
+## 🔹 2. Cheat Sheet (Core Commands)
+
+Here are the most used commands you’ll need to recall fast:
+
+```bash
+# Project management
+oc new-project myproj
+oc project myproj
+
+# Deployments
+oc new-app <image>
+oc scale deployment myapp --replicas=3
+oc rollout restart deployment myapp
+
+# Configs & Secrets
+oc create configmap mycfg --from-literal=key=val
+oc create secret generic mysec --from-literal=pass=123
+oc set env deployment/myapp --from=configmap/mycfg
+oc set env deployment/myapp --from=secret/mysec
+
+# Storage
+oc create -f pvc.yaml
+oc set volume deployment/myapp --add --name=data \
+  --mount-path=/data --claim-name=mypvc
+
+# Networking
+oc expose deployment/myapp --port=8080
+oc expose svc/myapp
+oc get routes
+
+# Security
+oc create sa mysa
+oc adm policy add-role-to-user admin user1 -n myproj
+oc adm policy add-role-to-user edit -z mysa -n myproj
+
+# Debugging
+oc logs podname
+oc rsh podname
+oc describe pod podname
+oc get events
+```
+
+---

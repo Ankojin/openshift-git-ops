@@ -1,0 +1,10 @@
+- Create a group with named site-users and guest-users
+oc adm groups new site-users harry susan
+oc adm groups new guest-users qwerty
+
+- Give edit permission to site-users group on test project
+oc adm policy add-role-to-group edit site-users -n test
+
+- Give view permission to guest-user groups on demo project
+
+oc adm policy add-role-to-group view guest-users -n demo

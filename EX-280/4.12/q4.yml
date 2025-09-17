@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: rocky-quota
+  namespace: rocky
+spec:
+  hard:
+    pods: "3"
+    cpu: "2"
+    services: "6"
+    memory: "1Gi"
+    secrets: "6"

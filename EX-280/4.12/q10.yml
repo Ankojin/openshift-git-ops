@@ -1,0 +1,17 @@
+# Add this to the pod's spec:
+volumes:
+- name: ex280-secure-vol
+  secret:
+    secretName: ex280-secure
+containers:
+- name: <container-name>
+  volumeMounts:
+  - name: ex280-secure-vol
+    mountPath: /etc/ex280-secure
+    readOnly: true
+env:
+- name: MYUSER
+  valueFrom:
+    secretKeyRef:
+      name: ex280-secure
+      key: myuser

@@ -1,0 +1,20 @@
+- Create project with named apollo, test,demo
+oc new-project apollo
+oc new-project test
+oc new-project demo
+
+- Bob juser should have cluster administrator right
+oc adm policy add-cluster-role-to-user cluster-admin bob
+
+- Joh user can create new project
+oc adm policy add-cluster-role-to-user self-provisioner john
+
+- Qwerty user can not create projects
+oc adm policy remove-cluster-role-from-user self-provisioner qwerty
+
+- Natasha user can only view the resources of apollow and test project
+oc adm policy add-role-to-user view natasha -n apollo
+oc adm policy add-role-to-user view natasha -n test
+
+- Kubeadmin user should not exist (remove kubeadmin user)
+oc delete user kubeadmin
