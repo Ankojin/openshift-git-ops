@@ -1,0 +1,10 @@
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+-keyout mycert.key -out mycert.crt \
+-subj "/C=US/ST=California/L=SanFrancisco/O=MyCompany/CN=example.com" \
+-addext "subjectAltName=DNS:example.com,DNS:www.example.com"
+
+
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+-keyout mycert.pem -out mycert.pem \
+-subj "/C=US/ST=California/L=SanFrancisco/O=MyCompany/CN=example.com" \
+-addext "subjectAltName=DNS:example.com,DNS:www.example.com"

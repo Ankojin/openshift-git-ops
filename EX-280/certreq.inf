@@ -1,0 +1,20 @@
+[Version]
+Signature="$Windows NT$"
+
+[NewRequest]
+Subject = "CN=console-openshift-console.apps-crc.testing"
+Exportable = TRUE
+KeyLength = 2048
+KeySpec = 1
+KeyUsage = 0xA0
+MachineKeySet = TRUE
+ProviderName = "Microsoft RSA SChannel Cryptographic Provider"
+HashAlgorithm = sha256
+RequestType = Cert
+ValidityPeriod = Years
+ValidityPeriodUnits = 5
+
+[Extensions]
+2.5.29.17 = "{text}"
+_continue_ = "dns=console-openshift-console.apps-crc.testing&"
+_continue_ = "dns=*.apps-crc.testing"

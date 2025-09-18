@@ -218,7 +218,7 @@
 1. Switch to project:
 
    ```
-   oc new-project bluewills
+   oc new-project bluewills   
    ```
 
 2. Create SA and assign SCC:
@@ -231,14 +231,14 @@
 3. Deploy app:
 
    ```
-   oc new-app --name=rocky registry.example.com/rocky:latest -n bluewills
-   oc set serviceaccount deployment/rocky magic -n bluewills
+   oc new-app --name=nginx ankojin/nginx:latest -n bluewills
+   oc set serviceaccount deployment/nginx magic -n bluewills
    ```
 
 4. Expose route:
 
    ```
-   oc expose svc/rocky --hostname=rocky.apps.ocp4.example.com -n bluewills
+   oc expose svc/nginx --hostname=nginx.apps-crc.testing -n bluewills
    ```
 
 **Verification:**
@@ -246,10 +246,9 @@
 ```
 oc get pods -n bluewills
 oc get route rocky -n bluewills
-curl http://rocky.apps.ocp4.example.com
+curl http://nginx.apps-crc.testing
 ```
 
----
 
 ### **Q8. Create a Secure Edge Route for oxcart in area51**
 
@@ -259,8 +258,8 @@ curl http://rocky.apps.ocp4.example.com
 
 **Solution:**
 
-1. Ensure cert and key files exist (`oxcart.crt`, `oxcart.key`).
-2. Create route:
+1.Ensure cert and key files exist (`oxcart.crt`, `oxcart.key`).
+2. Create route: 
 
    ```
    oc project area51
@@ -297,7 +296,6 @@ curl -k https://oxcart.apps.ocp4.example.com
 oc get pods -n lerna -l app=hydra
 ```
 
----
 
 ### **Q10. Configure HPA for scala in gru**
 
@@ -311,13 +309,13 @@ oc get pods -n lerna -l app=hydra
 
    ```
    oc project gru
-   oc set resources dc/scala --limits=cpu=100m --requests=cpu=25m
+   oc set resources deployment/scala --limits=cpu=100m --requests=cpu=25m
    ```
 
 2. Create HPA:
 
    ```
-   oc autoscale dc/scala --min=6 --max=40 --cpu-percent=60
+   oc autoscale deployment/scala --min=6 --max=40 --cpu-percent=60
    ```
 
 **Verification:**
@@ -326,8 +324,6 @@ oc get pods -n lerna -l app=hydra
 oc get hpa -n gru
 oc describe hpa scala -n gru
 ```
-
----
 
 ### **Q11. Create Secret magic in math**
 
